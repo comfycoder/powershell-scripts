@@ -1,0 +1,55 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: __K8S_APP_NAME__
+  labels:
+    app: __K8S_APP_NAME__
+spec:
+  selector:
+    matchLabels:
+      app: __K8S_APP_NAME__
+  template:
+    metadata:
+      labels:
+        app: __K8S_APP_NAME__
+    spec:
+      containers:
+      - name: __K8S_APP_NAME__
+        image: __RESOURCE_IMAGE_NAME__
+        imagePullPolicy: Always
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 100m
+            memory: 100Mi
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: __K8S_APP_NAME__
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+  selector:
+    app: __K8S_APP_NAME__
+---
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: __K8S_APP_NAME__-hpa
+  labels:
+    app: __K8S_APP_NAME__
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: __K8S_APP_NAME__
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80

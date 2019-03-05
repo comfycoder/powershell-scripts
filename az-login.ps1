@@ -1,8 +1,8 @@
-# Before you begin - make sure you're logged in to the azure CLI
+# Before you begin - make sure you're logged in to Azure using the azure CLI
 az login
 
 # Enter your Azure subscription name here
-$SUBSCRIPTION_NAME = "My Azure Subscription"
+$SUBSCRIPTION_NAME = "Enter Your Azure Subscription Name Here"
 
 Write-Verbose "Set the default Azure subscription" -Verbose
 az account set --subscription "$SUBSCRIPTION_NAME"

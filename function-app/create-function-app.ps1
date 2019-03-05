@@ -1,6 +1,14 @@
 # https://docs.microsoft.com/en-us/azure/azure-functions/functions-create-function-linux-custom-image
 
-. (Join-Path $SCRIPT_DIRECTORY "variables.fa.ps1")
+#**********************************************************
+# Function App variables
+#**********************************************************
+
+. (Join-Path $SCRIPT_DIRECTORY "**/variables.fa.ps1")
+
+#**********************************************************
+# Create Function App project
+#**********************************************************
 
 Set-Location "C:\"
 
@@ -12,6 +20,10 @@ func init --name "$FUNC_APP_NAME" --docker --worker-runtime "dotnet" --source-co
 
 func new --name $FUNC_APP_TRIGGER_NAME --template $FUNC_APP_TRIGGER_TEMPLATE
 
+#**********************************************************
+# Build container locally and run it
+#**********************************************************
+
 # Build the containerized application
 docker build -t "$CONTAINER_NAME" .
 
@@ -21,7 +33,9 @@ docker run -p 8081:80 -it "$CONTAINER_NAME"
 # Test the containerized application is working:
 Start-Process "http://localhost:8081/api/MyHttpTrigger?name=Dennis"
 
-
+#**********************************************************
+# Build container locally and run it
+#**********************************************************
 
 # log in to our container registry
 az acr login -n "$ACR_NAME" -g "$ACR_RG_NAME"
@@ -29,28 +43,27 @@ az acr login -n "$ACR_NAME" -g "$ACR_RG_NAME"
 # Get the login server name
 $LOGIN_SERVER = az acr show -n "$ACR_NAME" --query loginServer --output tsv
 
-# See the images we have - should have samplewebapp:v2
-docker image ls
-
-# Prep image for remote container registry
-docker tag $CONTAINER_NAME $LOGIN_SERVER/$CONTAINER_NAME
-
+# Show a list of local images
 docker images
 
-# Push the image to our Azure Container Registry
+# Prep image for your private remote container registry (ACR)
+docker tag $CONTAINER_NAME $LOGIN_SERVER/$CONTAINER_NAME
+
+# Show a list of local images with the newly preped image
+docker images
+
+# Push the preped image to your private remote container registry (ACR)
 docker push $LOGIN_SERVER/$CONTAINER_NAME
 
-# view the images in our ACR
+# View the images in your private remote container registry (ACR)
 az acr repository list -n "$ACR_NAME" -o table
 
-# view the tags for the samplewebapp repository
+# View the tags for the container repository
 az acr repository show-tags -n "$ACR_NAME" --repository "$IMAGE_NAME" -o table
 
-
-
-
-
-
+#**********************************************************
+# Create Function App Azure Resources
+#**********************************************************
 
 # Create Resource Group for Function App resources
 az group create -n $FUNC_APP_RG_NAME -l $FUNC_APP_LOCATION
@@ -62,13 +75,7 @@ az storage account create -n "$STORAGE_ACCOUNT_NAME" -l "$FUNC_APP_LOCATION" -g 
 # Create Application Service Plan
 az appservice plan create --name "$ASP_NAME" --resource-group "$FUNC_APP_RG_NAME" --sku B1 --is-linux 
 
-# Create Function App
-# az functionapp create --name "$FUNC_APP_NAME" --storage-account "$STORAGE_ACCOUNT_NAME" `
-#     --resource-group "$FUNC_APP_RG_NAME" --plan "$ASP_NAME" `
-#     --deployment-container-image-name "$LOGIN_SERVER/$CONTAINER_NAME"
-
-
-# Creat Application Insights
+# Create Application Insights
 az resource create `
     --name "$AIS_NAME" `
     --resource-group "$FUNC_APP_RG_NAME" `
@@ -115,10 +122,9 @@ Start-Process "$FUNC_APP_URL"
 
 # https://docs.microsoft.com/en-us/azure/active-directory/managed-identities-azure-resources/how-to-manage-ua-identity-cli
 # Create a User Assigned Managed Identity
-az identity create -n "$FUNC_UAMI" -g "$FUNC_APP_RG_NAME" 
+# az identity create -n "$FUNC_UAMI" -g "$FUNC_APP_RG_NAME" 
 
 # $UAI_RESOURCE_ID = $(az identity create -n "$FUNC_UAMI" -g "$FUNC_APP_RG_NAME" --query id --output tsv)
-
 
 # https://docs.microsoft.com/en-us/cli/azure/functionapp/identity?view=azure-cli-latest#az-functionapp-identity-assign
 # https://docs.microsoft.com/en-us/azure/app-service/overview-managed-identity
@@ -127,14 +133,11 @@ az identity create -n "$FUNC_UAMI" -g "$FUNC_APP_RG_NAME"
 # Add Managed System Identity
 az functionapp identity assign -n "$FUNC_APP_NAME" -g "$FUNC_APP_RG_NAME"
 
-
-
 az keyvault create --name "$KV_NAME" --resource-group "$KV_RG_NAME" `
     --enabled-for-deployment true --enabled-for-disk-encryption true --enabled-for-template-deployment true `
     --sku "premium"
 
 az functionapp identity
-
 
 # az storage account create -n "sacnmyfuncapp" -l "eastus2" -g "RG-CN-MyApps" --sku Standard_LRS `
 #     --access-tier "Hot" --bypass "None" --default-action "Allow" `
@@ -146,3 +149,4 @@ az functionapp identity
 # az functionapp create --name "FA-CN-MyFuncApp" --storage-account "sacnmyfuncapp" `
 #     --resource-group "RG-CN-MyApps" --plan "ASP-CN-MyFuncApp" `
 #     --deployment-container-image-name "acrcnmycontainers.azurecr.io/myfuncapp:v1.0.0"
+
